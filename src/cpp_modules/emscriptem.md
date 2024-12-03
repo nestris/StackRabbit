@@ -8,7 +8,7 @@ The emscriptembindings are in the file src/wasm.cpp
 Use this command
 
 ```bash 
-emcc -O3 src/wasm.cpp --bind -lembind -g0 -o wasmRabbit.js
+emcc -O3 src/wasm.cpp --bind -lembind -g0 --pre-js locateFile.js -o wasmRabbit.js
 ```
 
 This will produce 2 files 
