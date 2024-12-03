@@ -3,12 +3,13 @@
 #include <stdlib.h>     /* srand, rand */
 #include <time.h>       /* time */
 #include <string.h>
+#include <memory>
 
 
 #include "params.hpp"
 // I have to include the C++ files here due to a complication of node-gyp. Consider this the equivalent
 // of listing all the C++ sources in the makefile (Node-gyp seems to only work with 1 source rn).
-#include "../data/tetrominoes.cpp"
+#include "tetrominoes.cpp"
 #include "eval.cpp"
 #include "eval_context.cpp"
 #include "move_result.cpp"
@@ -18,7 +19,7 @@
 #include "high_level_search.cpp"
 #include "piece_rng.cpp"
 // #include "../data/ranks_output.cpp"
-#include "../data/ranks_base_7.cpp"
+#include "ranks_base_7.cpp"
 
 template<typename ... Args>
 std::string string_format( const std::string& format, Args ... args )
@@ -177,7 +178,7 @@ std::string mainProcess(char const *inputStr, RequestType requestType) {
   }
 }
 
-// int main(){
+// int test(){
 //   printf("Starting...\n");
 //   std::string result = mainProcess("0000000000000000000000000000000000000000000000000000000000000000001110000000111000000011110000"
 //               "0111110000011110000011111100011101110011101110001111111000111111100111111110011111111001111111"

@@ -2,7 +2,7 @@
 #include "eval.hpp"
 #include "utils.hpp"
 #include "params.hpp"
-#include "../data/canonical_sequences.hpp"
+#include "canonical_sequences.hpp"
 
 using namespace std;
 

@@ -1,10 +1,25 @@
 #define CROW_USE_ASIO
+
+#include "main.cpp"
+
 #include "crow_all.h"
 #include <future>
 #include <thread>
 #include <queue>
 #include <mutex>
 #include <condition_variable>
+
+struct RequestParams {
+    std::string boardString;
+    int level;
+    int lines;
+    int currentPiece;
+    int nextPiece;
+    std::string inputFrameTimeline;
+    int playoutCount;
+    int playoutLength;
+    int pruningBreadth;
+};
 
 // Thread pool implementation
 class ThreadPool {
@@ -62,10 +77,114 @@ private:
     bool stop;
 };
 
-// Expensive computation function
-std::string expensive_function(const std::string& input) {
-    std::this_thread::sleep_for(std::chrono::seconds(5)); // Simulate expensive computation
-    return "Processed: " + input;
+
+std::string httpGetTopMovesHybrid(std::string inputStr) {
+    const char* cInputStr = inputStr.c_str();
+    return mainProcess(cInputStr, GET_TOP_MOVES_HYBRID);
+}
+
+std::string httpRateMove(std::string inputStr) {
+    const char* cInputStr = inputStr.c_str();
+    return mainProcess(cInputStr, RATE_MOVE);
+}
+
+int getIntParam(const crow::request& req, const std::string& key, std::optional<int> defaultVal = std::nullopt) {
+    const char * val = req.url_params.get(key);
+
+    if (val == nullptr) {
+        // If default value is provided, return it
+        if (defaultVal.has_value()) return defaultVal.value();
+        // Otherwise, throw an error
+        throw std::runtime_error("Missing required parameter: " + key);
+    }
+    return std::stoi(val);
+}
+
+std::string getStringParam(const crow::request& req, const std::string& key, std::optional<std::string> defaultVal = std::nullopt) {
+    const char * val = req.url_params.get(key);
+
+    if (val == nullptr) {
+        // If default value is provided, return it
+        if (defaultVal.has_value()) return defaultVal.value();
+        // Otherwise, throw an error
+        throw std::runtime_error("Missing required parameter: " + key);
+    }
+    return std::string(val);
+}
+
+RequestParams getParamsFromRequest(const crow::request& req) {
+    auto url_params = req.url_params;
+    RequestParams params;
+
+    params.boardString = getStringParam(req, "board");
+    params.level = getIntParam(req, "level", 18);
+    params.lines = getIntParam(req, "lines", 0);
+    params.currentPiece = getIntParam(req, "currentPiece", -1);
+    params.nextPiece = getIntParam(req, "nextPiece", -1);
+    params.inputFrameTimeline = getStringParam(req, "inputFrameTimeline", "X."); // 30hz default
+    params.playoutCount = getIntParam(req, "playoutCount", 343); // depth 3 default
+    params.playoutLength = getIntParam(req, "playoutLength", 3);
+    params.pruningBreadth = getIntParam(req, "pruningBreadth", 25);
+
+    // Assert board string is 200 characters long and only contains 0s and 1s
+    if (params.boardString.length() != 200) {
+        throw std::runtime_error("Board string must be 200 characters long");
+    }
+    for (char c : params.boardString) {
+        if (c != '0' && c != '1') {
+            throw std::runtime_error("Board string must only contain 0s and 1s");
+        }
+    }
+
+    // Assert current and next piece are between -1 and 6
+    if (params.currentPiece < -1 || params.currentPiece > 6) {
+        throw std::runtime_error("Current piece must be between -1 and 6");
+    }
+    if (params.nextPiece < -1 || params.nextPiece > 6) {
+        throw std::runtime_error("Next piece must be between -1 and 6");
+    }
+
+    // inputFrameTimeline must be some combination of 'X' and '.'
+    for (char c : params.inputFrameTimeline) {
+        if (c != 'X' && c != '.') {
+            throw std::runtime_error("inputFrameTimeline must only contain 'X' and '.'");
+        }
+    }
+
+    // Level must be 18+
+    if (params.level < 18) {
+        throw std::runtime_error("Level must be 18 or higher");
+    }
+
+    // Lines, playoutCount, playoutLength, and pruningBreadth must be positive
+    if (params.lines < 0) {
+        throw std::runtime_error("Lines must be 0 or higher");
+    }
+    if (params.playoutCount < 0) {
+        throw std::runtime_error("Playout count must be 0 or higher");
+    }
+    if (params.playoutLength < 0) {
+        throw std::runtime_error("Playout length must be 0 or higher");
+    }
+    if (params.pruningBreadth < 0) {
+        throw std::runtime_error("Pruning breadth must be 0 or higher");
+    }
+
+    return params;
+}
+
+std::string generateRequestString(const RequestParams& params) {
+    std::string requestString = params.boardString + "|";
+    requestString += std::to_string(params.level) + "|";
+    requestString += std::to_string(params.lines) + "|";
+    requestString += std::to_string(params.currentPiece) + "|";
+    requestString += std::to_string(params.nextPiece) + "|";
+    requestString += params.inputFrameTimeline + "|";
+    requestString += std::to_string(params.playoutCount) + "|";
+    requestString += std::to_string(params.playoutLength) + "|";
+    requestString += std::to_string(params.pruningBreadth) + "|";
+
+    return requestString;
 }
 
 int main() {
@@ -74,11 +193,46 @@ int main() {
     // Create a thread pool with a fixed number of threads
     ThreadPool pool(std::thread::hardware_concurrency());
 
-    CROW_ROUTE(app, "/expensive")
+    CROW_ROUTE(app, "/ping")
         .methods("GET"_method)([&pool](const crow::request& req) {
-            auto future_result = pool.enqueue(expensive_function, req.body);
-            return crow::response(future_result.get());
+            return crow::response("pong");
         });
+
+    
+    // GET top-moves-hybrid/:inputStr
+    CROW_ROUTE(app, "/top-moves-hybrid")
+        .methods("GET"_method)([&pool](const crow::request& req) {
+            try {
+                RequestParams params = getParamsFromRequest(req);
+                std::string inputStr = generateRequestString(params);
+                auto res = pool.enqueue([inputStr] {
+                    return httpGetTopMovesHybrid(inputStr);
+                });
+                return crow::response(res.get());
+            } catch (const std::exception& e) {
+                return crow::response(400, e.what());
+            } catch (...) {
+                return crow::response(500, "An unknown error occurred");
+            }
+        });
+
+    // GET rate-move/:inputStr
+    CROW_ROUTE(app, "/rate-move")
+        .methods("GET"_method)([&pool](const crow::request& req) {
+            try {
+                RequestParams params = getParamsFromRequest(req);
+                std::string inputStr = generateRequestString(params);
+                auto res = pool.enqueue([inputStr] {
+                    return httpRateMove(inputStr);
+                });
+                return crow::response(res.get());
+            } catch (const std::exception& e) {
+                return crow::response(400, e.what());
+            } catch (...) {
+                return crow::response(500, "An unknown error occurred");
+            }
+        });
+
 
     app.port(4500).multithreaded().run();
     return 0;

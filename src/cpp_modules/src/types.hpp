@@ -19,6 +19,7 @@
 #define NO_TUCK_NOTATION '.'
 
 #include <vector>
+#include <string>
 
 enum RequestType {
   GET_LOCK_VALUE_LOOKUP, // Gets a map of all the values for all possible places where the current piece could lock.

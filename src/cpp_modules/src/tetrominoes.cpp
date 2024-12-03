@@ -1,4 +1,4 @@
-#include "../src/types.hpp"
+#include "types.hpp"
 #include <list>
 
 std::string PIECE_CHAR_LIST = "IOLJTSZ";

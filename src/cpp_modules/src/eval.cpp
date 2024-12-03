@@ -2,8 +2,8 @@
 #include "move_result.hpp"
 #include "eval_context.hpp"
 #include "utils.hpp"
-#include "../data/ranks_output.hpp"
-#include "../data/ranks_base_7.hpp"
+#include "ranks_output.hpp"
+#include "ranks_base_7.hpp"
 #include <math.h>
 #include <vector>
 using namespace std;
