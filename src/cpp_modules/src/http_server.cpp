@@ -11,6 +11,7 @@
 
 struct RequestParams {
     std::string boardString;
+    std::string secondBoardString;
     int level;
     int lines;
     int currentPiece;
@@ -112,7 +113,7 @@ std::string getStringParam(const crow::request& req, const std::string& key, std
     return std::string(val);
 }
 
-RequestParams getParamsFromRequest(const crow::request& req) {
+RequestParams getParamsFromRequest(const crow::request& req, bool requireSecondBoard) {
     auto url_params = req.url_params;
     RequestParams params;
 
@@ -135,6 +136,19 @@ RequestParams getParamsFromRequest(const crow::request& req) {
             throw std::runtime_error("Board string must only contain 0s and 1s");
         }
     }
+
+    // If requireSecondBoard is true, assert second board string is 200 characters long and only contains 0s and 1s
+    if (requireSecondBoard) {
+        params.secondBoardString = getStringParam(req, "secondBoard");
+        if (params.secondBoardString.length() != 200) {
+            throw std::runtime_error("Second board string must be 200 characters long");
+        }
+        for (char c : params.secondBoardString) {
+            if (c != '0' && c != '1') {
+                throw std::runtime_error("Second board string must only contain 0s and 1s");
+            }
+        }
+    } else params.secondBoardString = "";
 
     // Assert current and next piece are between -1 and 6
     if (params.currentPiece < -1 || params.currentPiece > 6) {
@@ -175,6 +189,9 @@ RequestParams getParamsFromRequest(const crow::request& req) {
 
 std::string generateRequestString(const RequestParams& params) {
     std::string requestString = params.boardString + "|";
+    if (params.secondBoardString != "") {
+        requestString += params.secondBoardString + "|";
+    }
     requestString += std::to_string(params.level) + "|";
     requestString += std::to_string(params.lines) + "|";
     requestString += std::to_string(params.currentPiece) + "|";
@@ -199,11 +216,11 @@ int main() {
         });
 
     
-    // GET top-moves-hybrid/:inputStr
+    // GET top-moves-hybrid/
     CROW_ROUTE(app, "/top-moves-hybrid")
         .methods("GET"_method)([&pool](const crow::request& req) {
             try {
-                RequestParams params = getParamsFromRequest(req);
+                RequestParams params = getParamsFromRequest(req, false);
                 std::string inputStr = generateRequestString(params);
                 auto res = pool.enqueue([inputStr] {
                     return httpGetTopMovesHybrid(inputStr);
@@ -216,11 +233,11 @@ int main() {
             }
         });
 
-    // GET rate-move/:inputStr
+    // GET rate-move/
     CROW_ROUTE(app, "/rate-move")
         .methods("GET"_method)([&pool](const crow::request& req) {
             try {
-                RequestParams params = getParamsFromRequest(req);
+                RequestParams params = getParamsFromRequest(req, true);
                 std::string inputStr = generateRequestString(params);
                 auto res = pool.enqueue([inputStr] {
                     return httpRateMove(inputStr);
