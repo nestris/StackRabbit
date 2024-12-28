@@ -98,7 +98,21 @@ int getIntParam(const crow::request& req, const std::string& key, std::optional<
         // Otherwise, throw an error
         throw std::runtime_error("Missing required parameter: " + key);
     }
-    return std::stoi(val);
+    try {
+        return std::stoi(val);
+    } catch (const std::invalid_argument& e) {
+        throw std::runtime_error("Expected integer for parameter: " + key);;
+    }
+    
+}
+
+// Pieces are represented as integers from 0 to 6
+int getPieceParam(const crow::request& req, const std::string& key) {
+    int piece = getIntParam(req, key);
+    if (piece < 0 || piece > 6) {
+        throw std::runtime_error("Piece must be between 0 and 6");
+    }
+    return piece;
 }
 
 std::string getStringParam(const crow::request& req, const std::string& key, std::optional<std::string> defaultVal = std::nullopt) {
@@ -120,8 +134,8 @@ RequestParams getParamsFromRequest(const crow::request& req, bool requireSecondB
     params.boardString = getStringParam(req, "board");
     params.level = getIntParam(req, "level", 18);
     params.lines = getIntParam(req, "lines", 0);
-    params.currentPiece = getIntParam(req, "currentPiece", -1);
-    params.nextPiece = getIntParam(req, "nextPiece", -1);
+    params.currentPiece = getPieceParam(req, "currentPiece");
+    params.nextPiece = getPieceParam(req, "nextPiece");
     params.inputFrameTimeline = getStringParam(req, "inputFrameTimeline", "X."); // 30hz default
     params.playoutCount = getIntParam(req, "playoutCount", 343); // depth 3 default
     params.playoutLength = getIntParam(req, "playoutLength", 3);
