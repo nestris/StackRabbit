@@ -49,6 +49,7 @@ struct GameState {
   float numPartialHoles; // A count of how many semi-holes there are, e.g. tuck setups, covered wells, 
   int lines;
   int level;
+  bool disableTuck;
 };
 
 /* Board encoding:

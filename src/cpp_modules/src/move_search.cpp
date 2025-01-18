@@ -416,7 +416,7 @@ int moveSearchInternal(GameState gameState,
     legalMidairPlacements, gameState.board, gameState.surfaceArray, availableTuckCols, lockPlacements);
 
   // Search for tucks
-  if (CAN_TUCK) {
+  if (!gameState.disableTuck) {
     findTucks(gameState.board, piece, availableTuckCols, minTuckYValsByNumPrevInputs, lockPlacements);
   }
 

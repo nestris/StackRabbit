@@ -7,12 +7,12 @@
  * Ignore all but the most permissible of tuck setups while digging.
  * --Side effect-- marks the hole or tuck setup in the board data structure
  */
-float analyzeHole(unsigned int board[20], int r, int c, int excludeHolesColumn, int surfaceArray[10], bool isDigMode){
+float analyzeHole(unsigned int board[20], int r, int c, int excludeHolesColumn, int surfaceArray[10], bool isDigMode, bool tuckDisabled){
   // VARIABLE_RANGE_CHECKS_ENABLED
   if (true && (r < 0 || r >= 20)){
     printf("PANIK B, r=%d\n", r);
   }
-  if (CAN_TUCK){
+  if (!tuckDisabled){
     if (c >= 4 
         && ((board[r] >> (9-c)) & 0b11111) == 0
         && (20 - surfaceArray[c-1] == r+1)
@@ -111,7 +111,8 @@ std::pair<int, float> getNewSurfaceAndNumNewHoles(int surfaceArray[10],
                                   LockPlacement lockPlacement,
                                   const EvalContext *evalContext,
                                   int isTuck,
-                                  OUT int newSurface[10]) {
+                                  OUT int newSurface[10],
+                                  bool tuckDisabled) {
   for (int i = 0; i < 10; i++) {
     newSurface[i] = surfaceArray[i];
   }
@@ -164,7 +165,7 @@ std::pair<int, float> getNewSurfaceAndNumNewHoles(int surfaceArray[10],
       }
       if (r < highestBoardCellInCol){
         // Check for new holes
-        float rating = analyzeHole(board, r, c, excludeHolesCol, surfaceArray, evalContext->aiMode == DIG);
+        float rating = analyzeHole(board, r, c, excludeHolesCol, surfaceArray, evalContext->aiMode == DIG, tuckDisabled);
         if (rating == 1) {
            // If it's a true hole
           holeWeightStartRow = r - 1;
@@ -206,7 +207,7 @@ std::pair<int, float> getNewSurfaceAndNumNewHoles(int surfaceArray[10],
  * @param excludeHolesColumn - a prespecified column to ignore holes in (usually the well). A value of -1 disables this behavior.
  * @returns the new hole count
  */
-std::pair<int, float> updateSurfaceAndHoles(int surfaceArray[10], unsigned int board[20], int excludeHolesColumn, bool isDigMode) {
+std::pair<int, float> updateSurfaceAndHoles(int surfaceArray[10], unsigned int board[20], int excludeHolesColumn, bool isDigMode, bool tuckDisabled) {
   // Reset hole and tuck setup bits
   for (int i = 0; i < 20; i++) {
     board[i] &= ~ALL_AUXILIARY_BITS;
@@ -236,7 +237,7 @@ std::pair<int, float> updateSurfaceAndHoles(int surfaceArray[10], unsigned int b
     while (r < 20) {
       // Add new holes to the overall count, unless they're in the well
       if (!(board[r] & mask)) {
-        float rating = analyzeHole(board, r, c, excludeHolesColumn, surfaceArray, isDigMode);
+        float rating = analyzeHole(board, r, c, excludeHolesColumn, surfaceArray, isDigMode, tuckDisabled);
         // Check that it's a hole (1.0) and not a tuck setup (eg. 0.9)
         if (rating == 1){
           lowestHoleInCol = r;
@@ -334,14 +335,14 @@ GameState advanceGameState(GameState gameState, LockPlacement lockPlacement, con
   bool isTuck = lockPlacement.tuckInput != NO_TUCK_NOTATION;
   int numLinesCleared = getNewBoardAndLinesCleared(gameState.board, lockPlacement, newState.board);
   std::pair<int, float> initialResult =
-    getNewSurfaceAndNumNewHoles(gameState.surfaceArray, newState.board, lockPlacement, evalContext, isTuck, OUT newState.surfaceArray);
+    getNewSurfaceAndNumNewHoles(gameState.surfaceArray, newState.board, lockPlacement, evalContext, isTuck, OUT newState.surfaceArray, gameState.disableTuck);
   if (numLinesCleared == 0 && gameState.numPartialHoles == 0){
     // Use the initial result, since its predictions are reliable for boards with no holes or overhangs
     newState.numTrueHoles += initialResult.first;
     newState.numPartialHoles += initialResult.second;
   } else {
     // Recalculate the holes and overhangs from scratch
-    std::pair<int, float> recalcResult = updateSurfaceAndHoles(newState.surfaceArray, newState.board, evalContext->countWellHoles ? -1 : evalContext->wellColumn, evalContext->aiMode == DIG);
+    std::pair<int, float> recalcResult = updateSurfaceAndHoles(newState.surfaceArray, newState.board, evalContext->countWellHoles ? -1 : evalContext->wellColumn, evalContext->aiMode == DIG, gameState.disableTuck);
     newState.numTrueHoles = recalcResult.first;
     newState.numPartialHoles = recalcResult.second;
   }

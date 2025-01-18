@@ -20,6 +20,7 @@ struct RequestParams {
     int playoutCount;
     int playoutLength;
     int pruningBreadth;
+    bool disableTuck;
 };
 
 // Thread pool implementation
@@ -127,6 +128,20 @@ std::string getStringParam(const crow::request& req, const std::string& key, std
     return std::string(val);
 }
 
+bool getBoolParam(const crow::request& req, const std::string& key, std::optional<bool> defaultVal = std::nullopt) {
+    const char * val = req.url_params.get(key);
+
+    if (val == nullptr) {
+        // If default value is provided, return it
+        if (defaultVal.has_value()) return defaultVal.value();
+        // Otherwise, throw an error
+        throw std::runtime_error("Missing required parameter: " + key);
+    }
+    if (strcmp(val, "true") == 0) return true;
+    if (strcmp(val, "false") == 0) return false;
+    throw std::runtime_error("Expected boolean for parameter: " + key);
+}
+
 RequestParams getParamsFromRequest(const crow::request& req, bool requireSecondBoard) {
     auto url_params = req.url_params;
     RequestParams params;
@@ -140,6 +155,7 @@ RequestParams getParamsFromRequest(const crow::request& req, bool requireSecondB
     params.playoutCount = getIntParam(req, "playoutCount", 343); // depth 3 default
     params.playoutLength = getIntParam(req, "playoutLength", 3);
     params.pruningBreadth = getIntParam(req, "pruningBreadth", 25);
+    params.disableTuck = getBoolParam(req, "disableTuck", false);
 
     // Assert board string is 200 characters long and only contains 0s and 1s
     if (params.boardString.length() != 200) {
@@ -214,6 +230,8 @@ std::string generateRequestString(const RequestParams& params) {
     requestString += std::to_string(params.playoutCount) + "|";
     requestString += std::to_string(params.playoutLength) + "|";
     requestString += std::to_string(params.pruningBreadth) + "|";
+    requestString += (params.disableTuck ? "1" : "0");
+    requestString += "|";
 
     return requestString;
 }

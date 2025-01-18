@@ -45,7 +45,8 @@ std::string mainProcess(char const *inputStr, RequestType requestType) {
     /* numTrueHoles */ 0,
     /* numPartialHoles= */ 0,
     /* lines= */ 0,
-    /* level= */ 0
+    /* level= */ 0,
+    /* disableTuck= */ false
   };
   unsigned int secondBoard[20];
   const Piece *curPiece = NULL;
@@ -104,6 +105,10 @@ std::string mainProcess(char const *inputStr, RequestType requestType) {
       break;
     case 7:
       pruningBreadth = argAsInt;
+      break;
+    case 8:
+      startingGameState.disableTuck = argAsInt == 1;
+      break;
     default:
       break;
     }
@@ -118,7 +123,7 @@ std::string mainProcess(char const *inputStr, RequestType requestType) {
     encodeBoard(secondBoardStr.c_str(), secondBoard);
   }
   getSurfaceArray(startingGameState.board, startingGameState.surfaceArray);
-  std::pair<int, float> result = updateSurfaceAndHoles(startingGameState.surfaceArray, startingGameState.board, wellColumn, /* isDigMode= */ false);
+  std::pair<int, float> result = updateSurfaceAndHoles(startingGameState.surfaceArray, startingGameState.board, wellColumn, /* isDigMode= */ false, startingGameState.disableTuck);
   startingGameState.numTrueHoles = result.first;
   startingGameState.numPartialHoles = result.second;
 
@@ -132,7 +137,7 @@ std::string mainProcess(char const *inputStr, RequestType requestType) {
   const EvalContext context = getEvalContext(startingGameState, pieceRangeContextLookup);
 
   // Recalculate holes once we have the eval context
-  pair<int, float> result2 = updateSurfaceAndHoles(startingGameState.surfaceArray, startingGameState.board, context.countWellHoles ? -1 : context.wellColumn, context.aiMode == DIG);
+  pair<int, float> result2 = updateSurfaceAndHoles(startingGameState.surfaceArray, startingGameState.board, context.countWellHoles ? -1 : context.wellColumn, context.aiMode == DIG, startingGameState.disableTuck);
   startingGameState.numTrueHoles = result2.first;
   startingGameState.numPartialHoles = result2.second;
 
@@ -140,6 +145,11 @@ std::string mainProcess(char const *inputStr, RequestType requestType) {
     printBoard(startingGameState.board);
     printBoardBits(startingGameState.board);
   }
+
+  // always print whether the tuck is disabled
+  if (startingGameState.disableTuck) printf("Tuck disabled\n");
+  else printf("Tuck enabled\n");
+  
 
   // Take the specified action on the input based on the request type
   switch (requestType) {
