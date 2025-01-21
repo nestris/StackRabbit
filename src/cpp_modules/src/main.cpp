@@ -147,8 +147,8 @@ std::string mainProcess(char const *inputStr, RequestType requestType) {
   }
 
   // always print whether the tuck is disabled
-  if (startingGameState.disableTuck) printf("Tuck disabled\n");
-  else printf("Tuck enabled\n");
+  // if (startingGameState.disableTuck) printf("Tuck disabled\n");
+  // else printf("Tuck enabled\n");
   
 
   // Take the specified action on the input based on the request type
