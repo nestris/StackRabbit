@@ -64,7 +64,8 @@ int searchDepth1(GameState gameState, const Piece *firstPiece, int keepTopN, con
     LockPlacement firstPlacement = *it;
 
     GameState resultingState = advanceGameState(gameState, firstPlacement, evalContext);
-    if (SHOULD_PLAY_PERFECT && ((resultingState.lines - gameState.lines) % 4) != 0) {
+    bool burn = ((resultingState.lines - gameState.lines) % 4) != 0;
+    if ((SHOULD_PLAY_PERFECT || resultingState.lines >= 330) && burn) {
       continue; // While playing perfect, ignore any placements that burn lines
     }
     float reward = getLineClearFactor(resultingState.lines - gameState.lines, evalContext->weights, evalContext->shouldRewardLineClears);
@@ -95,7 +96,8 @@ int searchDepth2(GameState gameState, const Piece *firstPiece, const Piece *seco
     maybePrint("\n\n\n\nNEW FIRST MOVE: rot=%d x=%d\n", firstPlacement.rotationIndex, firstPlacement.x);
 
     GameState afterFirstMove = advanceGameState(gameState, firstPlacement, evalContext);
-    if (SHOULD_PLAY_PERFECT && ((afterFirstMove.lines - gameState.lines) % 4) != 0) {
+    bool burn = ((afterFirstMove.lines - gameState.lines) % 4) != 0;
+    if ((SHOULD_PLAY_PERFECT || afterFirstMove.lines >= 330) && burn) {
       continue; // While playing perfect, ignore any placements that burn lines
     }
     for (int i = 0; i < 19; i++) {
@@ -114,7 +116,8 @@ int searchDepth2(GameState gameState, const Piece *firstPiece, const Piece *seco
 
     for (auto secondPlacement : secondLockPlacements) {
       GameState resultingState = advanceGameState(afterFirstMove, secondPlacement, evalContext);
-      if (SHOULD_PLAY_PERFECT && ((resultingState.lines - afterFirstMove.lines) % 4) != 0) {
+      bool burn = ((resultingState.lines - afterFirstMove.lines) % 4) != 0;
+      if ((SHOULD_PLAY_PERFECT || resultingState.lines >= 330) && burn) {
         continue; // While playing perfect, ignore any placements that burn lines
       }
       float evalScore = firstMoveReward + fastEval(afterFirstMove, resultingState, secondPlacement, evalContext);
