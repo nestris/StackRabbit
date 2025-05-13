@@ -78,6 +78,7 @@ float rateSurface(int surfaceArray[10], const EvalContext *evalContext) {
 }
 
 float getAverageHeight(int surfaceArray[10], int wellColumn) {
+  float highestColumn = 0;
   float avgHeight = 0;
   float weight = wellColumn >= 0 ? 0.1 : 0.111111;
   for (int i = 0; i < 10; i++) {
@@ -85,8 +86,13 @@ float getAverageHeight(int surfaceArray[10], int wellColumn) {
       continue;
     }
     avgHeight += surfaceArray[i] * weight;
+    if (surfaceArray[i] > highestColumn) {
+      highestColumn = surfaceArray[i];
+    }
   }
-  return avgHeight;
+
+  // weighted average between average height and the highest column, to penalize spires
+  return avgHeight * 0.5 + highestColumn * 0.5;
 }
 
 float getAverageHeightFactor(int avgHeight, float scareHeight) {
