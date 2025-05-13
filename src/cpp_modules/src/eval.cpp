@@ -86,7 +86,9 @@ float getAverageHeight(int surfaceArray[10], int wellColumn) {
       continue;
     }
     avgHeight += surfaceArray[i] * weight;
-    if (surfaceArray[i] > highestColumn) {
+
+    // doesn't matter if left is high
+    if (i >= 3 && surfaceArray[i] > highestColumn) {
       highestColumn = surfaceArray[i];
     }
   }
