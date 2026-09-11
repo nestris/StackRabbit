@@ -8,6 +8,7 @@
 #include <queue>
 #include <mutex>
 #include <condition_variable>
+#include <optional>
 
 struct RequestParams {
     std::string boardString;
